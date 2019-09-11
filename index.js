@@ -2,15 +2,29 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const session = require('express-session');
 
 const db = require('./database/dbConfig.js');
 const Users = require('./users/users-info.js');
 
 const server = express();
 
+const sessionConfig = {
+    name: 'life trap',
+    secret: 'neighbors are not home',
+    cookie: {
+        maxAge: 1000 * 60 * 60,
+        secure: false,
+        httpOnly: true
+    },
+    resave: false,
+    saveUninitialized: false
+}
+
 server.use(helmet());
 server.use(express.json());
 server.use(cors());
+server.use(session(sessionConfig));
 
 server.get('/', (req, res) => {
     res.send('We have action');
@@ -23,6 +37,7 @@ server.post('/api/register', (req, res) => {
 
     Users.add(user)
         .then(saved => {
+            req.session.user = saved;
             res.status(201).json(saved);
         })
         .catch(error => {
@@ -37,9 +52,10 @@ server.post('/api/login', (req, res) => {
         .first()
         .then(user => {
             if (user && bcrypt.compareSync(password, user.password)) {
-                res.status(200).json({message: `Hello ${user.username}!`});
+                req.session.user = user;
+                res.status(200).json({message: `Hello ${user.username}, cookie is available`});
             }else {
-                res.status(401).json({message: 'Credentials seem to incorrect'});
+                res.status(401).json({message: 'Credentials seem to be incorrect'});
             }
         })
         .catch(error => {
